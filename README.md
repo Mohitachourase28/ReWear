@@ -1,0 +1,2 @@
+# ReWear
+Odoo hackathon project
