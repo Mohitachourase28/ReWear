@@ -1,118 +1,143 @@
-/* eslint-disable no-unused-vars */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts } from "../../redux/productSlice.js";
-import { motion, AnimatePresence } from "framer-motion";
+import { fetchProducts, fetchItemById } from "../../redux/productSlice.js";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
-export default function ProductCarousel() {
+const Carousel = () => {
   const dispatch = useDispatch();
   const { products, loading, error } = useSelector((state) => state.products);
-  const [index, setIndex] = useState(0);
+  const scrollRef = useRef(null);
+  const [scrollIndex, setScrollIndex] = useState(0);
 
   useEffect(() => {
     dispatch(fetchProducts());
   }, [dispatch]);
 
-  // Autoplay slide every 4s
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (products.length > 0) {
-        setIndex((prev) => (prev + 1) % products.length);
-      }
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [products]);
+  const scroll = (direction) => {
+    const container = scrollRef.current;
+    const cardWidth = container.firstChild?.offsetWidth || 280;
+    const visibleCount = Math.floor(container.offsetWidth / cardWidth);
+    const maxIndex = Math.max(products.length - visibleCount, 0);
 
-  const nextSlide = () => {
-    if (products.length > 0)
-      setIndex((prev) => (prev + 1) % products.length);
+    if (direction === "left" && scrollIndex > 0) {
+      setScrollIndex((prev) => prev - 1);
+      container.scrollBy({ left: -cardWidth, behavior: "smooth" });
+    }
+    if (direction === "right" && scrollIndex < maxIndex) {
+      setScrollIndex((prev) => prev + 1);
+      container.scrollBy({ left: cardWidth, behavior: "smooth" });
+    }
   };
 
-  const prevSlide = () => {
-    if (products.length > 0)
-      setIndex((prev) => (prev - 1 + products.length) % products.length);
-  };
-
-  if (loading) {
-    return (
-      <div className="w-full max-w-3xl mx-auto h-64 flex items-center justify-center text-gray-400">
-        Loading products...
-      </div>
-    );
-  }
-
-  if (error || !Array.isArray(products)) {
-    return (
-      <div className="w-full max-w-3xl mx-auto h-64 flex items-center justify-center text-red-500">
-        {error || "Something went wrong while loading products."}
-      </div>
-    );
-  }
-
-  if (products.length === 0) {
-    return (
-      <div className="w-full max-w-3xl mx-auto h-64 flex items-center justify-center text-gray-500">
-        No products available.
-      </div>
-    );
-  }
-
-  const current = products[index];
+  if (loading) return <div className="text-center py-12">Loading...</div>;
+  if (error) return <div className="text-center text-red-500">{error}</div>;
+  if (!products.length)
+    return <div className="text-center text-gray-500">No items found.</div>;
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto overflow-hidden rounded-2xl shadow-lg">
-      <AnimatePresence mode="wait">
-        <motion.img
-          key={current._id || index}
-          src={current.imageUrl || "https://via.placeholder.com/800x400?text=No+Image"}
-          alt={current.name || "Product"}
-          className="w-full h-64 object-cover"
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -100 }}
-          transition={{ duration: 0.5 }}
-          onError={(e) => {
-            e.target.src = "https://via.placeholder.com/800x400?text=Image+Unavailable";
-          }}
-        />
-      </AnimatePresence>
+    <section className="relative py-10">
+      <main className="max-w-6xl mx-auto px-4">
+        <h3 className="text-2xl font-bold mb-6 text-center">Featured Items</h3>
 
-      {/* Arrows */}
-      <div className="absolute inset-0 flex items-center justify-between px-4">
-        <button
-          onClick={prevSlide}
-          className="bg-black/50 p-2 rounded-full text-white hover:bg-black/70"
-        >
-          <ChevronLeft />
-        </button>
-        <button
-          onClick={nextSlide}
-          className="bg-black/50 p-2 rounded-full text-white hover:bg-black/70"
-        >
-          <ChevronRight />
-        </button>
-      </div>
+        <div className="relative">
+          {/* Left Arrow */}
+          <button
+            onClick={() => scroll("left")}
+            className="absolute left-[-28px] top-1/2 -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow hover:scale-105 transition"
+          >
+            <ChevronLeft size={20} />
+          </button>
 
-      {/* Caption */}
-      <div className="absolute bottom-0 left-0 w-full bg-black/50 text-white text-center py-2">
-        <h3 className="text-lg font-semibold truncate px-2">{current.name || "Unnamed Item"}</h3>
-        {current.price && (
-          <p className="text-sm">{`₹${current.price}`}</p>
-        )}
-      </div>
-
-      {/* Dots */}
-      <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {products.map((_, i) => (
+          {/* Scrollable Card Row */}
           <div
-            key={i}
-            className={`w-3 h-3 rounded-full ${
-              i === index ? "bg-white" : "bg-white/50"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
+            ref={scrollRef}
+            className="flex overflow-x-auto snap-x snap-mandatory px-4 sm:px-6 lg:px-8 gap-4 py-4 scrollbar-hide"
+            style={{
+              scrollSnapType: "x mandatory",
+            }}
+          >
+            {products.map((item, index) => (
+              <div
+                key={item.id || index}
+                className="min-w-[240px] sm:min-w-[260px] max-w-xs rounded-xl shadow-md overflow-hidden flex flex-col bg-white"
+              >
+                <img
+                  src={
+                    item.images?.[0] ||
+                    "https://via.placeholder.com/300x300?text=No+Image"
+                  }
+                  alt={item.title}
+                  className="w-full h-40 object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src =
+                      "https://via.placeholder.com/300x300?text=Image+Unavailable";
+                  }}
+                />
+                <div className="p-4 flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="font-semibold text-gray-900 truncate">
+                        {item.title}
+                      </h4>
+                      {item.size && (
+                        <span className="text-xs text-gray-500">
+                          Size: {item.size}
+                        </span>
+                      )}
+                    </div>
+                    {item.condition && (
+                      <span
+                        className={`
+                          inline-block text-xs px-2 py-1 rounded-full mb-3
+                          ${
+                            item.condition === "Excellent"
+                              ? "bg-blue-100 text-blue-700"
+                              : item.condition === "Very Good"
+                              ? "bg-purple-100 text-purple-700"
+                              : item.condition === "Good"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          }
+                        `}
+                      >
+                        {item.condition}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between gap-2 mt-auto">
+                    <button className="bg-green-500 text-white text-sm px-3 py-1 rounded hover:bg-green-600">
+                      Swap
+                    </button>
+                    <Link
+                      to={`/product/${item._id}`}
+                      className="w-full"
+                      onClick={() => dispatch(fetchItemById(item._id))} // ✅ Dispatch here
+                    >
+                      <button className="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700 w-full">
+                        View Details
+                      </button>
+                    </Link>
+
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Right Arrow */}
+          <button
+            onClick={() => scroll("right")}
+            className="absolute right-[-28px] top-1/2 -translate-y-1/2 z-10 bg-white p-2 rounded-full shadow hover:scale-105 transition"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      </main>
+    </section>
   );
-}
+};
+
+export default Carousel;

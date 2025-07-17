@@ -1,25 +1,23 @@
-/* eslint-disable no-unused-vars */
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-
-// Async thunk: Upload images to Cloudinary
+// ✅ Async thunk: Upload images to Cloudinary
 export const uploadImagesToCloudinary = createAsyncThunk(
   "item/uploadImages",
   async (images, { rejectWithValue }) => {
     try {
       const uploadedUrls = [];
 
-      for (const file of images) {
+      for (const files of images) {
         const data = new FormData();
-        data.append("file", file);
-        data.append("upload_preset", "ReWear");
+        data.append("file", files);
+        data.append("upload_preset", "ReWear"); // ✅ Must be an unsigned preset
 
+        // ✅ Axios will automatically handle correct headers for FormData
         const res = await axios.post(
           "https://api.cloudinary.com/v1_1/dnp677qpf/image/upload",
           data,
           {
-            headers: { "Content-Type": "multipart/form-data" },
-            // ❌ Do NOT include withCredentials: true unless you know you need it
+            withCredentials: false, // 🚨 Must be false
           }
         );
 
@@ -28,12 +26,15 @@ export const uploadImagesToCloudinary = createAsyncThunk(
 
       return uploadedUrls;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.error?.message || "Upload failed");
+      console.error("Cloudinary upload error:", err);
+      console.log("🔍 Full Cloudinary error response:", err.response?.data); // 👈 Add this line
+      return rejectWithValue(
+        err.response?.data?.error?.message || "Image upload failed"
+      );
     }
   }
 );
-
-// Async thunk: Submit item to backend
+// Async thunk: Submit item data to backend
 export const submitItem = createAsyncThunk(
   "item/submitItem",
   async ({ formData, imageUrls, uploader }, { rejectWithValue }) => {
@@ -43,20 +44,24 @@ export const submitItem = createAsyncThunk(
         uploader,
         images: imageUrls,
         tags: formData.tags
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
+          ? formData.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : [],
       };
-
+      console.log("📤 Sending item payload:", payload);
       const response = await axios.post("/api/items", payload);
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || "Submission failed");
+      return rejectWithValue(
+        err.response?.data?.message || "Item submission failed"
+      );
     }
   }
 );
 
-// Initial state
+// Initial form state
 const initialState = {
   formData: {
     title: "",
@@ -74,7 +79,7 @@ const initialState = {
   success: false,
 };
 
-// Slice
+// Item slice
 const itemSlice = createSlice({
   name: "item",
   initialState,
@@ -83,13 +88,13 @@ const itemSlice = createSlice({
       const { name, value } = action.payload;
       state.formData[name] = value;
     },
-    // Removed setImages to avoid storing File objects in Redux
-    resetForm(state) {
+    resetForm() {
       return initialState;
     },
   },
   extraReducers: (builder) => {
     builder
+      // Upload to Cloudinary
       .addCase(uploadImagesToCloudinary.pending, (state) => {
         state.uploading = true;
         state.error = null;
@@ -103,6 +108,7 @@ const itemSlice = createSlice({
         state.error = action.payload || "Image upload failed";
       })
 
+      // Submit item to backend
       .addCase(submitItem.pending, (state) => {
         state.submitting = true;
         state.success = false;

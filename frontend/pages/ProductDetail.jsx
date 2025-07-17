@@ -2,13 +2,15 @@
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
-import { fetchItemById } from "../redux/itemSlice";
+import { fetchItemById } from "../redux/productSlice.js";
 import axios from "axios";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const dispatch = useDispatch();
-  const { selectedItem } = useSelector((state) => state.items);
+  const { selectedProduct, loading, error } = useSelector(
+    (state) => state.products
+  );
 
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
@@ -17,15 +19,16 @@ export default function ProductDetail() {
 
   useEffect(() => {
     dispatch(fetchItemById(id));
-  }, [id]);
+  }, [id, dispatch]);
 
   useEffect(() => {
-    if (selectedItem) {
-      setDescription(selectedItem.description);
-      setAvailable(selectedItem.available);
-      setImagePreview(selectedItem.imageUrl);
+    console.log("Selected product:", selectedProduct);
+    if (selectedProduct) {
+      setDescription(selectedProduct.description);
+      setAvailable(selectedProduct.available);
+      setImagePreview(selectedProduct.imageUrl);
     }
-  }, [selectedItem]);
+  }, [selectedProduct]);
 
   const handleImageUpload = async () => {
     if (!image) return;
@@ -64,6 +67,16 @@ export default function ProductDetail() {
       console.error(error);
     }
   };
+
+  if (loading) return <div className="text-center py-12">Loading...</div>;
+  if (error) return <div className="text-center text-red-500">{error}</div>;
+  if (!selectedProduct) {
+  return (
+    <div className="text-center py-12 text-gray-500">
+      Loading product details...
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-green-50 p-4">

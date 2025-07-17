@@ -1,5 +1,5 @@
 // App.jsx
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useDispatch } from "react-redux";
 import { useEffect } from "react";
@@ -12,6 +12,7 @@ import AdminPanel from "../pages/AdminPanel.jsx";
 import Landing from "../pages/Landing.jsx";
 import Navbar from "./components/Navbar.jsx";
 import AddItemForm from "./components/AddItemForm.jsx";
+import ProductDetail from "../pages/ProductDetail.jsx";
 
 function ProtectedRoute({ children, allowRoles = [] }) {
   const { user } = useSelector((state) => state.auth);
@@ -44,6 +45,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/product/:id" element={<ProductDetail/>}/>
         <Route path="/addItemForm" element={<AddItemForm/>}/>
         <Route
           path="/admin"

@@ -20,7 +20,7 @@ export default function Register() {
   const handleRegister = async () => {
     try {
       await dispatch(registerUser(formData)).unwrap();
-      navigate("/dashboard");
+      navigate("/landing");
     } catch (err) {
       console.error("Registration failed:", err);
       alert(err?.message || "Registration failed");
